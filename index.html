@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0B1120">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>My Day</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { background: #0B1120; min-height: 100vh; }
+
+  :root {
+    --bg: #0B1120; --panel: #131B2E; --panel-edge: #1E2A44;
+    --business: #E8944A; --rest: #5B6B8C; --growth: #6FCBDB;
+    --income: #8FBF6F; --expense: #D9694F;
+    --ink: #EDEFF5; --muted: #8590A6;
+  }
+
+  body { font-family: 'Inter', sans-serif; color: var(--ink); }
+
+  .app { max-width: 880px; margin: 0 auto; padding: 20px 16px calc(24px + env(safe-area-inset-bottom)) 16px; min-height: 100vh; }
+  .app-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; }
+  .app-title { font-family: 'Fraunces', serif; font-size: 25px; font-weight: 600; }
+  .app-date { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted); text-align: right; }
+  .app-clock { font-family: 'IBM Plex Mono', monospace; font-size: 18px; color: var(--growth); font-weight: 500; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 20px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 12px; padding: 4px; overflow-x: auto; }
+  .tab-btn { flex: 1; text-align: center; padding: 9px 6px; border-radius: 9px; font-size: 12.5px; font-weight: 500; color: var(--muted); background: none; border: none; cursor: pointer; font-family: 'Inter', sans-serif; white-space: nowrap; }
+  .tab-btn.active { background: var(--panel-edge); color: var(--ink); }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .section-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 18px 0 10px; }
+  .section-label:first-child { margin-top: 0; }
+  .card { background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+  .btn { background: var(--growth); color: #0B1120; border: none; font-weight: 600; font-size: 13px; padding: 10px 16px; border-radius: 9px; cursor: pointer; font-family: 'Inter', sans-serif; }
+  .btn.secondary { background: none; border: 1px solid var(--panel-edge); color: var(--muted); font-weight: 500; }
+  .btn.danger { background: var(--expense); color: #fff; }
+  .btn.small { padding: 7px 12px; font-size: 12px; }
+  input, select { background: var(--bg); border: 1px solid var(--panel-edge); color: var(--ink); padding: 9px 10px; border-radius: 8px; font-size: 13px; font-family: 'Inter', sans-serif; width: 100%; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .field-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; display: block; }
+  .field { margin-bottom: 10px; }
+
+  .main-grid { display: grid; grid-template-columns: 280px 1fr; gap: 26px; }
+  @media (max-width: 680px) { .main-grid { grid-template-columns: 1fr; } }
+  .wheel-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .wheel { position: relative; width: 220px; height: 220px; border-radius: 50%; box-shadow: 0 0 0 1px var(--panel-edge), inset 0 0 40px rgba(0,0,0,0.35); }
+  .wheel-hole { position: absolute; top: 50%; left: 50%; width: 62%; height: 62%; background: var(--bg); border-radius: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 0 0 1px var(--panel-edge); }
+  .hole-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .hole-pct { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 600; margin-top: 2px; }
+  .needle { position: absolute; top: 50%; left: 50%; width: 2px; height: 42%; background: var(--ink); transform-origin: top center; border-radius: 2px; }
+  .needle-dot { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; background: var(--ink); border-radius: 50%; transform: translate(-50%, -50%); }
+  .legend { display: flex; gap: 14px; font-size: 11px; color: var(--muted); flex-wrap: wrap; justify-content: center; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+  .checklist { display: flex; flex-direction: column; gap: 6px; }
+  .item { display: flex; align-items: center; gap: 10px; padding: 11px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 10px; cursor: pointer; user-select: none; }
+  .item.done { opacity: 0.5; }
+  .checkbox { width: 18px; height: 18px; border-radius: 5px; border: 2px solid var(--muted); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+  .item.done .checkbox { background: var(--growth); border-color: var(--growth); color: var(--bg); font-weight: 700; }
+  .item-cat { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .item-label { font-size: 13.5px; font-weight: 500; }
+  .item-time { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+  .bar-label { width: 76px; font-size: 11.5px; color: var(--muted); flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-track { flex: 1; height: 18px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; transition: width 0.4s ease; }
+  .bar-hrs { width: 44px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; text-align: right; flex-shrink: 0; }
+
+  .warning { margin-top: 14px; padding: 11px 13px; background: rgba(217,105,79,0.12); border: 1px solid rgba(217,105,79,0.35); border-radius: 10px; font-size: 12.5px; color: #F0A08D; line-height: 1.5; }
+
+  .history-row { display: flex; gap: 6px; align-items: flex-end; height: 44px; }
+  .history-bar { flex: 1; background: var(--growth); border-radius: 4px 4px 0 0; min-height: 3px; }
+  .history-labels { display: flex; gap: 6px; margin-top: 6px; }
+  .history-labels span { flex: 1; text-align: center; font-size: 10px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+
+  .event-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 10px; margin-bottom: 8px; }
+  .event-item.past { opacity: 0.45; }
+  .event-main { flex: 1; min-width: 0; }
+  .event-title { font-size: 14px; font-weight: 600; }
+  .event-time { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--growth); margin-top: 2px; }
+  .event-reminder-tag { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .icon-btn { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 4px 8px; flex-shrink: 0; }
+  .empty-note { color: var(--muted); font-size: 13px; padding: 16px 0; text-align: center; }
+
+  .finance-subtabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .subtab-btn { padding: 7px 14px; border-radius: 20px; font-size: 12.5px; border: 1px solid var(--panel-edge); background: none; color: var(--muted); cursor: pointer; }
+  .subtab-btn.active { background: var(--panel-edge); color: var(--ink); }
+  .finance-subview { display: none; }
+  .finance-subview.active { display: block; }
+
+  .member-card { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 10px; margin-bottom: 8px; }
+  .member-name { font-size: 14px; font-weight: 600; }
+  .member-role { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .member-rate { font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--income); }
+
+  .expense-item { display: flex; justify-content: space-between; align-items: center; padding: 11px 12px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 10px; margin-bottom: 7px; }
+  .expense-main { flex: 1; min-width: 0; }
+  .expense-desc { font-size: 13.5px; font-weight: 500; }
+  .expense-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .expense-amt { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; color: var(--expense); white-space: nowrap; margin-right: 6px; }
+
+  .summary-strip { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .summary-box { flex: 1; min-width: 110px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 10px; padding: 12px; }
+  .summary-num { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; }
+  .summary-lbl { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+
+  .footer-note { font-size: 11px; color: var(--muted); text-align: center; margin-top: 22px; line-height: 1.6; }
+
+  /* Settings tab */
+  .settings-subtabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .manage-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 12px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 10px; margin-bottom: 7px; gap: 10px; }
+  .manage-row-main { flex: 1; min-width: 0; }
+  .manage-row-title { font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 7px; }
+  .manage-row-sub { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: 'IBM Plex Mono', monospace; }
+  .manage-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .cat-inline-input { display: flex; gap: 6px; align-items: center; flex: 1; }
+  .helper-text { font-size: 11.5px; color: var(--muted); line-height: 1.5; margin-bottom: 12px; }
+  .form-toggle-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="app-header">
+    <div class="app-title">My Day</div>
+    <div>
+      <div class="app-date" id="hdr-date"></div>
+      <div class="app-clock" id="hdr-clock"></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="routine">Routine</button>
+    <button class="tab-btn" data-tab="schedule">Schedule</button>
+    <button class="tab-btn" data-tab="finance">Finance</button>
+    <button class="tab-btn" data-tab="settings">Settings</button>
+  </div>
+
+  <!-- ROUTINE VIEW -->
+  <div class="view active" id="view-routine">
+    <div class="main-grid">
+      <div class="wheel-wrap">
+        <div class="wheel" id="wheel">
+          <div class="needle" id="needle"></div>
+          <div class="needle-dot"></div>
+          <div class="wheel-hole">
+            <div class="hole-label">Today</div>
+            <div class="hole-pct" id="pct">0%</div>
+            <div class="hole-label">complete</div>
+          </div>
+        </div>
+        <div class="legend" id="wheel-legend"></div>
+      </div>
+      <div>
+        <div class="section-label">Today's Blocks — tap to mark done</div>
+        <div class="checklist" id="checklist"></div>
+      </div>
+    </div>
+
+    <div class="section-label" id="ideal-label">Ideal Split (24h)</div>
+    <div id="ideal-bars"></div>
+    <div class="section-label">Completed Today</div>
+    <div id="actual-bars"></div>
+    <div class="warning" id="warning" style="display:none;"></div>
+
+    <div class="section-label">Last 7 Days</div>
+    <div class="history-row" id="history-row"></div>
+    <div class="history-labels" id="history-labels"></div>
+    <div style="margin-top:16px;"><button class="btn secondary" id="reset-routine">Reset today</button></div>
+  </div>
+
+  <!-- SCHEDULE VIEW -->
+  <div class="view" id="view-schedule">
+    <div class="card">
+      <div class="field"><span class="field-label">Title</span><input type="text" id="ev-title" placeholder="e.g. Client meeting — Sarah (USA)"></div>
+      <div class="row">
+        <div class="field"><span class="field-label">Date</span><input type="date" id="ev-date"></div>
+        <div class="field"><span class="field-label">Time</span><input type="time" id="ev-time"></div>
+      </div>
+      <div class="field">
+        <span class="field-label">Remind me before</span>
+        <select id="ev-remind">
+          <option value="0">No reminder</option>
+          <option value="5">5 minutes before</option>
+          <option value="15" selected>15 minutes before</option>
+          <option value="30">30 minutes before</option>
+          <option value="60">1 hour before</option>
+        </select>
+      </div>
+      <button class="btn" id="ev-add" style="width:100%; margin-top:6px;">Add to schedule</button>
+    </div>
+
+    <div class="section-label">Reminders</div>
+    <div class="card">
+      <div class="helper-text">Reminders only fire while this app is open in your browser — enable notifications so they show up even on another tab.</div>
+      <button class="btn secondary" id="enable-notifications">Enable reminder alerts</button>
+      <span id="notif-status" style="font-size:11.5px; color:var(--muted); margin-left:8px;"></span>
+    </div>
+
+    <div class="section-label">Upcoming</div>
+    <div id="event-list"></div>
+  </div>
+
+  <!-- FINANCE VIEW -->
+  <div class="view" id="view-finance">
+    <div class="finance-subtabs">
+      <button class="subtab-btn active" data-sub="team">Team Profiles</button>
+      <button class="subtab-btn" data-sub="expenses">Daily Expenses</button>
+    </div>
+
+    <div class="finance-subview active" id="sub-team">
+      <div class="card">
+        <div class="row">
+          <div class="field"><span class="field-label">Name</span><input type="text" id="tm-name" placeholder="e.g. Samran"></div>
+          <div class="field"><span class="field-label">Role / Platform</span><input type="text" id="tm-role" placeholder="e.g. eBay — USA market"></div>
+        </div>
+        <div class="field"><span class="field-label">Monthly rate / pay (optional, PKR)</span><input type="number" id="tm-rate" placeholder="e.g. 40000"></div>
+        <button class="btn" id="tm-add" style="width:100%;">Add team member</button>
+      </div>
+      <div class="section-label">Team</div>
+      <div id="team-list"></div>
+    </div>
+
+    <div class="finance-subview" id="sub-expenses">
+      <div class="card">
+        <div class="row">
+          <div class="field"><span class="field-label">Date</span><input type="date" id="ex-date"></div>
+          <div class="field"><span class="field-label">Amount (PKR)</span><input type="number" id="ex-amount" placeholder="e.g. 1500"></div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <span class="field-label">Category</span>
+            <select id="ex-category"></select>
+          </div>
+          <div class="field">
+            <span class="field-label">Linked team member (optional)</span>
+            <select id="ex-member"><option value="">— None —</option></select>
+          </div>
+        </div>
+        <div class="field"><span class="field-label">Description</span><input type="text" id="ex-desc" placeholder="e.g. Supplier stock for USA listings"></div>
+        <button class="btn" id="ex-add" style="width:100%;">Add expense</button>
+      </div>
+
+      <div class="section-label">This Month</div>
+      <div class="summary-strip" id="expense-summary"></div>
+
+      <div class="section-label">All Expenses</div>
+      <div id="expense-list"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS VIEW -->
+  <div class="view" id="view-settings">
+    <div class="settings-subtabs">
+      <button class="subtab-btn active" data-setsub="blocks">Routine Blocks</button>
+      <button class="subtab-btn" data-setsub="categories">Expense Categories</button>
+      <button class="subtab-btn" data-setsub="backup">Backup &amp; Restore</button>
+    </div>
+
+    <!-- Manage routine blocks -->
+    <div class="finance-subview active" id="setsub-blocks">
+      <div class="helper-text">Add, edit, or remove any block in your daily routine. Times use the 24-hour clock — for an overnight block (like ecommerce ops), just set start later than end (e.g. 20:00 → 05:00) and it'll wrap past midnight automatically.</div>
+      <div class="card">
+        <div class="form-toggle-title" id="blk-form-title">Add a block</div>
+        <div class="field"><span class="field-label">Label</span><input type="text" id="blk-label" placeholder="e.g. Ecommerce Ops"></div>
+        <div class="row">
+          <div class="field"><span class="field-label">Start time</span><input type="time" id="blk-start"></div>
+          <div class="field"><span class="field-label">End time</span><input type="time" id="blk-end"></div>
+        </div>
+        <div class="field">
+          <span class="field-label">Category</span>
+          <select id="blk-cat">
+            <option value="business">Business</option>
+            <option value="rest">Rest</option>
+            <option value="growth">Growth</option>
+          </select>
+        </div>
+        <div class="row">
+          <button class="btn" id="blk-save" style="width:100%;">Add block</button>
+          <button class="btn secondary" id="blk-cancel" style="width:100%; display:none;">Cancel</button>
+        </div>
+      </div>
+      <div class="section-label">Rename Categories</div>
+      <div class="card">
+        <div class="row">
+          <div class="field"><span class="field-label">Business label</span><input type="text" id="cat-name-business"></div>
+          <div class="field"><span class="field-label">Rest label</span><input type="text" id="cat-name-rest"></div>
+          <div class="field"><span class="field-label">Growth label</span><input type="text" id="cat-name-growth"></div>
+        </div>
+        <button class="btn secondary" id="cat-names-save" style="width:100%;">Save labels</button>
+      </div>
+      <div class="section-label">Your Blocks</div>
+      <div id="blocks-list"></div>
+    </div>
+
+    <!-- Manage expense categories -->
+    <div class="finance-subview" id="setsub-categories">
+      <div class="helper-text">These show up in the Category dropdown when logging an expense.</div>
+      <div class="card">
+        <div class="cat-inline-input">
+          <input type="text" id="new-cat-name" placeholder="e.g. Office Rent">
+          <button class="btn small" id="new-cat-add">Add</button>
+        </div>
+      </div>
+      <div id="categories-list"></div>
+    </div>
+
+    <!-- Backup & restore -->
+    <div class="finance-subview" id="setsub-backup">
+      <div class="helper-text">Export everything — routine, schedule, team, expenses, and your custom settings — into one file. Keep it safe, and use Import if you switch phones or clear your browser.</div>
+      <div class="card">
+        <div class="form-toggle-title">Export</div>
+        <button class="btn" id="export-data" style="width:100%;">Download backup file</button>
+      </div>
+      <div class="card">
+        <div class="form-toggle-title">Import</div>
+        <div class="helper-text" style="margin-bottom:8px;">⚠️ This will overwrite your current data on this device with whatever is in the file.</div>
+        <input type="file" id="import-file" accept="application/json">
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">Everything here is saved only on this device/browser. No cloud sync. Use Settings → Backup to export a copy.</div>
+</div>
+
+<script>
+(function() {
+  /* ============ SHARED STORAGE HELPERS ============ */
+  function getJSON(key, fallback) {
+    try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+    catch (e) { return fallback; }
+  }
+  function setJSON(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+  function decimalToTimeStr(dec) {
+    let h = Math.floor(dec) % 24;
+    let m = Math.round((dec - Math.floor(dec)) * 60);
+    if (m === 60) { m = 0; h = (h + 1) % 24; }
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  }
+  function timeStrToDecimal(str) {
+    const [h, m] = str.split(':').map(Number);
+    return h + (m || 0) / 60;
+  }
+
+  /* ============ TABS ============ */
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('view-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+  document.querySelectorAll('#view-finance .subtab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#view-finance .subtab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#view-finance .finance-subview').forEach(v => v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('sub-' + btn.dataset.sub).classList.add('active');
+    });
+  });
+  document.querySelectorAll('#view-settings .subtab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#view-settings .subtab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#view-settings .finance-subview').forEach(v => v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('setsub-' + btn.dataset.setsub).classList.add('active');
+    });
+  });
+
+  /* ============ HEADER CLOCK ============ */
+  function renderHeader() {
+    const now = new Date();
+    document.getElementById('hdr-clock').textContent = now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('hdr-date').textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+  }
+
+  /* ============================================================
+     CATEGORY NAMES (customizable labels for business/rest/growth)
+     ============================================================ */
+  const CAT_COLORS = { business: '#E8944A', rest: '#5B6B8C', growth: '#6FCBDB' };
+  let catNames = getJSON('category-names', { business: 'Business', rest: 'Rest', growth: 'Growth' });
+  function saveCatNames() { setJSON('category-names', catNames); }
+  function CATS() {
+    return {
+      business: { color: CAT_COLORS.business, name: catNames.business },
+      rest: { color: CAT_COLORS.rest, name: catNames.rest },
+      growth: { color: CAT_COLORS.growth, name: catNames.growth },
+    };
+  }
+
+  document.getElementById('cat-name-business').value = catNames.business;
+  document.getElementById('cat-name-rest').value = catNames.rest;
+  document.getElementById('cat-name-growth').value = catNames.growth;
+  document.getElementById('cat-names-save').addEventListener('click', () => {
+    catNames = {
+      business: document.getElementById('cat-name-business').value.trim() || 'Business',
+      rest: document.getElementById('cat-name-rest').value.trim() || 'Rest',
+      growth: document.getElementById('cat-name-growth').value.trim() || 'Growth',
+    };
+    saveCatNames();
+    renderRoutine(); renderBlocksList(); renderBlockCatOptions();
+  });
+
+  /* ============================================================
+     ROUTINE BLOCKS (fully editable)
+     ============================================================ */
+  const DEFAULT_BLOCKS = [
+    { id: 'ecom',    label: 'Ecommerce Ops (Overnight)', start: 20,   end: 5,    cat: 'business' },
+    { id: 'client',  label: 'Client Dealing',            start: 5,    end: 6,    cat: 'business' },
+    { id: 'sleep',   label: 'Sleep',                     start: 6,    end: 9,    cat: 'rest' },
+    { id: 'fresh',   label: 'Fresh Up / Planning',       start: 9,    end: 10,   cat: 'rest' },
+    { id: 'class',   label: 'Ecommerce Class',           start: 10,   end: 11.5, cat: 'business' },
+    { id: 'break',   label: 'Break',                     start: 11.5, end: 12,   cat: 'rest' },
+    { id: 'upwork',  label: 'Upwork (Ali Husnain + Salman)', start: 12, end: 14, cat: 'business' },
+    { id: 'lunch',   label: 'Lunch',                     start: 14,   end: 15,   cat: 'rest' },
+    { id: 'aipy',    label: 'AI + Python Course',        start: 15,   end: 16,   cat: 'business' },
+    { id: 'mhr',     label: 'Digital Marketing (MHR)',   start: 16,   end: 17,   cat: 'business' },
+    { id: 'jewelry', label: 'Jewelry COD (New Setup)',   start: 17,   end: 18,   cat: 'business' },
+    { id: 'pte',     label: 'PTE Course',                start: 18,   end: 19,   cat: 'growth' },
+    { id: 'dinner',  label: 'Dinner / Rest',             start: 19,   end: 20,   cat: 'rest' },
+  ];
+  let BLOCKS = getJSON('routine-blocks-config', null);
+  if (!BLOCKS) { BLOCKS = DEFAULT_BLOCKS; setJSON('routine-blocks-config', BLOCKS); }
+
+  function saveBlocks() { setJSON('routine-blocks-config', BLOCKS); }
+  function blockDuration(b) { return b.end > b.start ? (b.end - b.start) : (24 - b.start + b.end); }
+  function blockWheelSegments(b) { return b.end > b.start ? [[b.start, b.end]] : [[b.start, 24], [0, b.end]]; }
+  function blockTimeLabel(b) {
+    const fmt = d => { const h = Math.floor(d), m = Math.round((d - h) * 60); const period = h >= 12 ? 'PM' : 'AM'; let h12 = h % 12; if (h12 === 0) h12 = 12; return h12 + (m ? ':' + String(m).padStart(2,'0') : '') + ' ' + period; };
+    return fmt(b.start) + ' – ' + fmt(b.end);
+  }
+
+  let checked = new Set(getJSON('routine:' + todayStr(), []));
+  function saveRoutine() {
+    setJSON('routine:' + todayStr(), [...checked]);
+    localStorage.setItem('routine-history:' + todayStr(), String(completionPct()));
+  }
+  function totalHours() { return BLOCKS.reduce((s, b) => s + blockDuration(b), 0) || 1; }
+  function completionPct() {
+    const done = BLOCKS.filter(b => checked.has(b.id)).reduce((s, b) => s + blockDuration(b), 0);
+    return Math.round((done / totalHours()) * 100);
+  }
+  function buildWheelGradient() {
+    const stops = [];
+    BLOCKS.forEach(b => blockWheelSegments(b).forEach(([s, e]) => stops.push(`${CATS()[b.cat].color} ${(s/24*100).toFixed(3)}% ${(e/24*100).toFixed(3)}%`)));
+    stops.sort((a, b) => parseFloat(a.split(' ')[1]) - parseFloat(b.split(' ')[1]));
+    if (stops.length === 0) return CAT_COLORS.rest;
+    return `conic-gradient(from 0deg, ${stops.join(', ')})`;
+  }
+  function renderWheel() {
+    document.getElementById('wheel').style.background = buildWheelGradient();
+    const now = new Date();
+    const deg = ((now.getHours() + now.getMinutes() / 60) / 24) * 360;
+    document.getElementById('needle').style.transform = `rotate(${deg}deg)`;
+  }
+  function renderLegend() {
+    const el = document.getElementById('wheel-legend');
+    const c = CATS();
+    el.innerHTML = Object.keys(c).map(k => `<span class="legend-item"><span class="dot" style="background:${c[k].color}"></span>${c[k].name}</span>`).join('');
+  }
+  function renderChecklist() {
+    const el = document.getElementById('checklist');
+    el.innerHTML = '';
+    const c = CATS();
+    const sorted = [...BLOCKS].sort((a, b) => a.start - b.start);
+    sorted.forEach(b => {
+      const done = checked.has(b.id);
+      const row = document.createElement('div');
+      row.className = 'item' + (done ? ' done' : '');
+      row.innerHTML = `<span class="item-cat" style="background:${c[b.cat].color}"></span>
+        <span class="checkbox">${done ? '✓' : ''}</span>
+        <span><div class="item-label">${b.label}</div><div class="item-time">${blockTimeLabel(b)} · ${blockDuration(b)}h · ${c[b.cat].name}</div></span>`;
+      row.addEventListener('click', () => { checked.has(b.id) ? checked.delete(b.id) : checked.add(b.id); renderRoutine(); saveRoutine(); });
+      el.appendChild(row);
+    });
+    if (BLOCKS.length === 0) el.innerHTML = '<div class="empty-note">No blocks yet — add some in Settings → Routine Blocks.</div>';
+  }
+  function catTotals(onlyChecked) {
+    const t = { business: 0, rest: 0, growth: 0 };
+    BLOCKS.forEach(b => { if (!onlyChecked || checked.has(b.id)) t[b.cat] += blockDuration(b); });
+    return t;
+  }
+  function renderBars(containerId, totals) {
+    const el = document.getElementById(containerId);
+    const c = CATS();
+    el.innerHTML = '';
+    Object.keys(c).forEach(k => {
+      const hrs = Math.round(totals[k] * 10) / 10, pct = (hrs / totalHours()) * 100;
+      const row = document.createElement('div');
+      row.className = 'bar-row';
+      row.innerHTML = `<div class="bar-label">${c[k].name}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${c[k].color}"></div></div><div class="bar-hrs">${hrs}h</div>`;
+      el.appendChild(row);
+    });
+  }
+  function renderWarning() {
+    const el = document.getElementById('warning');
+    const totals = catTotals(false);
+    const hasSleep = BLOCKS.some(b => b.id === 'sleep');
+    if (totals.rest <= 6.5 && (!hasSleep || !checked.has('sleep'))) {
+      el.style.display = 'block';
+      el.textContent = `Heads up: your schedule only budgets ${Math.round(totals.rest*10)/10}h for rest across the whole day. Protect your sleep block first.`;
+    } else el.style.display = 'none';
+  }
+  function renderHistory() {
+    const row = document.getElementById('history-row'), labels = document.getElementById('history-labels');
+    row.innerHTML = ''; labels.innerHTML = '';
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const ds = d.toISOString().slice(0, 10);
+      const pct = parseInt(localStorage.getItem('routine-history:' + ds) || '0', 10);
+      const bar = document.createElement('div');
+      bar.className = 'history-bar'; bar.style.height = Math.max(pct, 3) + '%'; bar.title = ds + ': ' + pct + '%';
+      row.appendChild(bar);
+      const lbl = document.createElement('span'); lbl.textContent = d.toLocaleDateString(undefined, { weekday: 'narrow' });
+      labels.appendChild(lbl);
+    }
+  }
+  function renderRoutine() {
+    renderLegend();
+    renderChecklist();
+    document.getElementById('pct').textContent = completionPct() + '%';
+    renderBars('ideal-bars', catTotals(false));
+    renderBars('actual-bars', catTotals(true));
+    renderWarning();
+  }
+  document.getElementById('reset-routine').addEventListener('click', () => { checked = new Set(); renderRoutine(); saveRoutine(); });
+
+  /* ---- Manage blocks UI (Settings) ---- */
+  let editingBlockId = null;
+  function renderBlockCatOptions() {
+    const sel = document.getElementById('blk-cat');
+    const cur = sel.value;
+    const c = CATS();
+    sel.innerHTML = Object.keys(c).map(k => `<option value="${k}">${c[k].name}</option>`).join('');
+    sel.value = cur || 'business';
+  }
+  function renderBlocksList() {
+    const el = document.getElementById('blocks-list');
+    el.innerHTML = '';
+    const c = CATS();
+    const sorted = [...BLOCKS].sort((a, b) => a.start - b.start);
+    if (sorted.length === 0) { el.innerHTML = '<div class="empty-note">No blocks yet.</div>'; return; }
+    sorted.forEach(b => {
+      const row = document.createElement('div');
+      row.className = 'manage-row';
+      row.innerHTML = `<div class="manage-row-main">
+          <div class="manage-row-title"><span class="dot" style="background:${c[b.cat].color}"></span>${b.label}</div>
+          <div class="manage-row-sub">${blockTimeLabel(b)} · ${blockDuration(b)}h · ${c[b.cat].name}</div>
+        </div>
+        <div class="manage-actions">
+          <button class="icon-btn" data-edit="${b.id}">✎</button>
+          <button class="icon-btn" data-del="${b.id}">✕</button>
+        </div>`;
+      row.querySelector('[data-edit]').addEventListener('click', () => startEditBlock(b.id));
+      row.querySelector('[data-del]').addEventListener('click', () => {
+        BLOCKS = BLOCKS.filter(x => x.id !== b.id);
+        saveBlocks(); renderBlocksList(); renderRoutine();
+      });
+      el.appendChild(row);
+    });
+  }
+  function startEditBlock(id) {
+    const b = BLOCKS.find(x => x.id === id);
+    if (!b) return;
+    editingBlockId = id;
+    document.getElementById('blk-form-title').textContent = 'Edit block';
+    document.getElementById('blk-label').value = b.label;
+    document.getElementById('blk-start').value = decimalToTimeStr(b.start);
+    document.getElementById('blk-end').value = decimalToTimeStr(b.end);
+    document.getElementById('blk-cat').value = b.cat;
+    document.getElementById('blk-save').textContent = 'Update block';
+    document.getElementById('blk-cancel').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function resetBlockForm() {
+    editingBlockId = null;
+    document.getElementById('blk-form-title').textContent = 'Add a block';
+    document.getElementById('blk-label').value = '';
+    document.getElementById('blk-start').value = '';
+    document.getElementById('blk-end').value = '';
+    document.getElementById('blk-save').textContent = 'Add block';
+    document.getElementById('blk-cancel').style.display = 'none';
+  }
+  document.getElementById('blk-cancel').addEventListener('click', resetBlockForm);
+  document.getElementById('blk-save').addEventListener('click', () => {
+    const label = document.getElementById('blk-label').value.trim();
+    const startStr = document.getElementById('blk-start').value;
+    const endStr = document.getElementById('blk-end').value;
+    const cat = document.getElementById('blk-cat').value;
+    if (!label || !startStr || !endStr) { alert('Label, start, and end time are required.'); return; }
+    const start = timeStrToDecimal(startStr), end = timeStrToDecimal(endStr);
+    if (editingBlockId) {
+      const b = BLOCKS.find(x => x.id === editingBlockId);
+      b.label = label; b.start = start; b.end = end; b.cat = cat;
+    } else {
+      BLOCKS.push({ id: uid(), label, start, end, cat });
+    }
+    saveBlocks();
+    resetBlockForm();
+    renderBlocksList();
+    renderRoutine();
+  });
+  renderBlockCatOptions();
+
+  /* ============================================================
+     SCHEDULE TAB
+     ============================================================ */
+  let events = getJSON('events', []);
+  let notifiedIds = new Set(getJSON('notified-events', []));
+  function saveEvents() { setJSON('events', events); }
+  function saveNotified() { setJSON('notified-events', [...notifiedIds]); }
+  document.getElementById('ev-date').value = todayStr();
+
+  document.getElementById('ev-add').addEventListener('click', () => {
+    const title = document.getElementById('ev-title').value.trim();
+    const date = document.getElementById('ev-date').value;
+    const time = document.getElementById('ev-time').value;
+    const remind = parseInt(document.getElementById('ev-remind').value, 10);
+    if (!title || !date || !time) { alert('Title, date, and time required.'); return; }
+    events.push({ id: uid(), title, date, time, remind });
+    saveEvents();
+    document.getElementById('ev-title').value = '';
+    document.getElementById('ev-time').value = '';
+    renderEvents();
+  });
+  function eventDateTime(ev) { return new Date(ev.date + 'T' + ev.time + ':00'); }
+  function renderEvents() {
+    const el = document.getElementById('event-list');
+    el.innerHTML = '';
+    const sorted = [...events].sort((a, b) => eventDateTime(a) - eventDateTime(b));
+    if (sorted.length === 0) { el.innerHTML = '<div class="empty-note">No events yet. Add your first meeting above.</div>'; return; }
+    const now = new Date();
+    sorted.forEach(ev => {
+      const dt = eventDateTime(ev);
+      const isPast = dt < now;
+      const row = document.createElement('div');
+      row.className = 'event-item' + (isPast ? ' past' : '');
+      row.innerHTML = `<div class="event-main">
+          <div class="event-title">${ev.title}</div>
+          <div class="event-time">${dt.toLocaleDateString(undefined, {month:'short', day:'numeric'})} · ${dt.toLocaleTimeString(undefined, {hour:'2-digit', minute:'2-digit'})}</div>
+          ${ev.remind > 0 ? `<div class="event-reminder-tag">🔔 ${ev.remind} min before</div>` : ''}
+        </div>
+        <button class="icon-btn" data-id="${ev.id}">✕</button>`;
+      row.querySelector('.icon-btn').addEventListener('click', () => { events = events.filter(e => e.id !== ev.id); saveEvents(); renderEvents(); });
+      el.appendChild(row);
+    });
+  }
+  document.getElementById('enable-notifications').addEventListener('click', () => {
+    if (!('Notification' in window)) { document.getElementById('notif-status').textContent = 'Not supported on this browser.'; return; }
+    Notification.requestPermission().then(perm => {
+      document.getElementById('notif-status').textContent = perm === 'granted' ? 'Enabled ✓' : 'Permission denied';
+    });
+  });
+  function checkReminders() {
+    const now = new Date();
+    events.forEach(ev => {
+      if (!ev.remind || notifiedIds.has(ev.id)) return;
+      const dt = eventDateTime(ev);
+      const remindAt = new Date(dt.getTime() - ev.remind * 60000);
+      if (now >= remindAt && now < dt) {
+        notifiedIds.add(ev.id); saveNotified();
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('Upcoming: ' + ev.title, { body: dt.toLocaleTimeString(undefined, {hour:'2-digit', minute:'2-digit'}) + ' today' });
+        } else {
+          alert('Reminder: ' + ev.title + ' at ' + dt.toLocaleTimeString(undefined, {hour:'2-digit', minute:'2-digit'}));
+        }
+      }
+    });
+  }
+
+  /* ============================================================
+     FINANCE TAB
+     ============================================================ */
+  let team = getJSON('team-members', []);
+  let expenses = getJSON('expenses', []);
+  const DEFAULT_CATEGORIES = ['Business — eBay', 'Business — Etsy', 'Business — Upwork', 'Business — MHR / Marketing', 'Business — Jewelry COD', 'Team Salary', 'Personal', 'Other'];
+  let categories = getJSON('expense-categories', null);
+  if (!categories) { categories = DEFAULT_CATEGORIES; setJSON('expense-categories', categories); }
+
+  function saveTeam() { setJSON('team-members', team); }
+  function saveExpenses() { setJSON('expenses', expenses); }
+  function saveCategories() { setJSON('expense-categories', categories); }
+
+  document.getElementById('tm-add').addEventListener('click', () => {
+    const name = document.getElementById('tm-name').value.trim();
+    const role = document.getElementById('tm-role').value.trim();
+    const rate = parseFloat(document.getElementById('tm-rate').value) || 0;
+    if (!name) { alert('Name required.'); return; }
+    team.push({ id: uid(), name, role, rate });
+    saveTeam();
+    document.getElementById('tm-name').value = '';
+    document.getElementById('tm-role').value = '';
+    document.getElementById('tm-rate').value = '';
+    renderTeam(); renderMemberDropdown();
+  });
+  function renderTeam() {
+    const el = document.getElementById('team-list');
+    el.innerHTML = '';
+    if (team.length === 0) { el.innerHTML = '<div class="empty-note">No team members added yet.</div>'; return; }
+    team.forEach(m => {
+      const row = document.createElement('div');
+      row.className = 'member-card';
+      row.innerHTML = `<div><div class="member-name">${m.name}</div><div class="member-role">${m.role || '—'}</div></div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          ${m.rate ? `<div class="member-rate">Rs ${m.rate.toLocaleString()}/mo</div>` : ''}
+          <button class="icon-btn" data-id="${m.id}">✕</button>
+        </div>`;
+      row.querySelector('.icon-btn').addEventListener('click', () => { team = team.filter(t => t.id !== m.id); saveTeam(); renderTeam(); renderMemberDropdown(); });
+      el.appendChild(row);
+    });
+  }
+  function renderMemberDropdown() {
+    const sel = document.getElementById('ex-member');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— None —</option>';
+    team.forEach(m => { const opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.name; sel.appendChild(opt); });
+    sel.value = current;
+  }
+
+  function renderExpenseCategoryDropdown() {
+    const sel = document.getElementById('ex-category');
+    const current = sel.value;
+    sel.innerHTML = categories.map(c => `<option>${c}</option>`).join('');
+    if (categories.includes(current)) sel.value = current;
+  }
+
+  document.getElementById('ex-date').value = todayStr();
+  document.getElementById('ex-add').addEventListener('click', () => {
+    const date = document.getElementById('ex-date').value;
+    const amount = parseFloat(document.getElementById('ex-amount').value);
+    const category = document.getElementById('ex-category').value;
+    const memberId = document.getElementById('ex-member').value;
+    const desc = document.getElementById('ex-desc').value.trim();
+    if (!date || !amount) { alert('Date and amount required.'); return; }
+    expenses.push({ id: uid(), date, amount, category, memberId, desc });
+    saveExpenses();
+    document.getElementById('ex-amount').value = '';
+    document.getElementById('ex-desc').value = '';
+    renderExpenses();
+  });
+  function renderExpenseSummary() {
+    const el = document.getElementById('expense-summary');
+    const now = new Date();
+    const monthPrefix = now.toISOString().slice(0, 7);
+    const thisMonth = expenses.filter(e => e.date.startsWith(monthPrefix));
+    const total = thisMonth.reduce((s, e) => s + e.amount, 0);
+    const business = thisMonth.filter(e => e.category.startsWith('Business') || e.category === 'Team Salary').reduce((s, e) => s + e.amount, 0);
+    const personal = thisMonth.filter(e => e.category === 'Personal' || e.category === 'Other').reduce((s, e) => s + e.amount, 0);
+    el.innerHTML = `
+      <div class="summary-box"><div class="summary-num">Rs ${total.toLocaleString()}</div><div class="summary-lbl">Total spent</div></div>
+      <div class="summary-box"><div class="summary-num" style="color:var(--business)">Rs ${business.toLocaleString()}</div><div class="summary-lbl">Business</div></div>
+      <div class="summary-box"><div class="summary-num" style="color:var(--growth)">Rs ${personal.toLocaleString()}</div><div class="summary-lbl">Personal</div></div>
+    `;
+  }
+  function renderExpenses() {
+    renderExpenseSummary();
+    const el = document.getElementById('expense-list');
+    el.innerHTML = '';
+    const sorted = [...expenses].sort((a, b) => b.date.localeCompare(a.date));
+    if (sorted.length === 0) { el.innerHTML = '<div class="empty-note">No expenses logged yet.</div>'; return; }
+    sorted.forEach(e => {
+      const member = team.find(m => m.id === e.memberId);
+      const row = document.createElement('div');
+      row.className = 'expense-item';
+      row.innerHTML = `<div class="expense-main">
+          <div class="expense-desc">${e.desc || e.category}</div>
+          <div class="expense-meta">${e.date} · ${e.category}${member ? ' · ' + member.name : ''}</div>
+        </div>
+        <div class="expense-amt">Rs ${e.amount.toLocaleString()}</div>
+        <button class="icon-btn" data-id="${e.id}">✕</button>`;
+      row.querySelector('.icon-btn').addEventListener('click', () => { expenses = expenses.filter(x => x.id !== e.id); saveExpenses(); renderExpenses(); });
+      el.appendChild(row);
+    });
+  }
+
+  /* ---- Manage expense categories UI (Settings) ---- */
+  document.getElementById('new-cat-add').addEventListener('click', () => {
+    const name = document.getElementById('new-cat-name').value.trim();
+    if (!name) return;
+    if (categories.includes(name)) { alert('That category already exists.'); return; }
+    categories.push(name);
+    saveCategories();
+    document.getElementById('new-cat-name').value = '';
+    renderCategoriesList(); renderExpenseCategoryDropdown();
+  });
+  function renderCategoriesList() {
+    const el = document.getElementById('categories-list');
+    el.innerHTML = '';
+    categories.forEach((cat, idx) => {
+      const row = document.createElement('div');
+      row.className = 'manage-row';
+      row.innerHTML = `<div class="manage-row-main"><input type="text" value="${cat.replace(/"/g,'&quot;')}" data-idx="${idx}" style="background:transparent;border:none;padding:0;color:var(--ink);font-size:13.5px;font-weight:500;"></div>
+        <div class="manage-actions"><button class="icon-btn" data-del="${idx}">✕</button></div>`;
+      const input = row.querySelector('input');
+      input.addEventListener('change', () => {
+        const newVal = input.value.trim();
+        if (!newVal) { input.value = categories[idx]; return; }
+        const oldVal = categories[idx];
+        categories[idx] = newVal;
+        saveCategories();
+        expenses.forEach(e => { if (e.category === oldVal) e.category = newVal; });
+        saveExpenses();
+        renderExpenseCategoryDropdown(); renderExpenses();
+      });
+      row.querySelector('[data-del]').addEventListener('click', () => {
+        categories = categories.filter((_, i) => i !== idx);
+        saveCategories(); renderCategoriesList(); renderExpenseCategoryDropdown();
+      });
+      el.appendChild(row);
+    });
+    if (categories.length === 0) el.innerHTML = '<div class="empty-note">No categories left — add one above.</div>';
+  }
+
+  /* ============================================================
+     BACKUP & RESTORE
+     ============================================================ */
+  document.getElementById('export-data').addEventListener('click', () => {
+    const dump = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      dump[key] = localStorage.getItem(key);
+    }
+    const blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'my-day-backup-' + todayStr() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('import-file').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm('This will replace all current data on this device with the backup file. Continue?')) { e.target.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        localStorage.clear();
+        Object.keys(parsed).forEach(k => localStorage.setItem(k, parsed[k]));
+        alert('Restored successfully. The app will now reload.');
+        location.reload();
+      } catch (err) {
+        alert('Could not read that file — make sure it is a valid backup JSON.');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  /* ============================================================
+     INIT
+     ============================================================ */
+  renderHeader();
+  renderRoutine();
+  renderHistory();
+  renderBlocksList();
+  renderEvents();
+  renderTeam();
+  renderMemberDropdown();
+  renderExpenseCategoryDropdown();
+  renderExpenses();
+  renderCategoriesList();
+
+  setInterval(() => { renderHeader(); renderWheel(); checkReminders(); }, 30000);
+  renderWheel();
+  checkReminders();
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed:', err));
+    });
+  }
+})();
+</script>
+</body>
+</html>
